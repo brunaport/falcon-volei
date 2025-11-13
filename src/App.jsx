@@ -8,19 +8,33 @@ function App() {
     try {
       const savedPlayers = localStorage.getItem('falcon-volei-players')
       if (savedPlayers) {
-        return JSON.parse(savedPlayers)
+        const players = JSON.parse(savedPlayers)
+        // Verificar se já tem reservas, senão adicionar
+        const hasReserves = players.some(p => p.isReserve)
+        if (!hasReserves) {
+          // Adicionar reservas aos dados existentes
+          players.push(
+            { id: 7, name: 'Reserva 1', number: 7, position: { x: '0%', y: '0%' }, isReserve: true },
+            { id: 8, name: 'Reserva 2', number: 8, position: { x: '0%', y: '0%' }, isReserve: true }
+          )
+          // Salvar os dados atualizados
+          localStorage.setItem('falcon-volei-players', JSON.stringify(players))
+        }
+        return players
       }
     } catch (error) {
       console.error('Erro ao carregar jogadores do localStorage:', error)
     }
     // Valores padrão alinhados com as posições indicativas da quadra
     return [
-      { id: 1, name: 'Jogador 1', number: 1, position: { x: '83.33%', y: '19.44%' } },  // Posição 2
-      { id: 2, name: 'Jogador 2', number: 2, position: { x: '50%', y: '19.44%' } },     // Posição 3
-      { id: 3, name: 'Jogador 3', number: 3, position: { x: '16.67%', y: '19.44%' } },  // Posição 4
-      { id: 4, name: 'Jogador 4', number: 4, position: { x: '83.33%', y: '69.44%' } },  // Posição 1
-      { id: 5, name: 'Jogador 5', number: 5, position: { x: '50%', y: '69.44%' } },     // Posição 6
-      { id: 6, name: 'Jogador 6', number: 6, position: { x: '16.67%', y: '69.44%' } }   // Posição 5
+      { id: 1, name: 'Bruna', number: 13, position: { x: '83.33%', y: '19.44%' } },  // Posição 2
+      { id: 2, name: 'Bela', number: 9, position: { x: '50%', y: '19.44%' } },     // Posição 3
+      { id: 3, name: 'Maju', number: 12, position: { x: '16.67%', y: '19.44%' } },  // Posição 4
+      { id: 4, name: 'Camila', number: 11, position: { x: '83.33%', y: '69.44%' } },  // Posição 1
+      { id: 5, name: 'Laura', number: 6, position: { x: '50%', y: '69.44%' } },     // Posição 6
+      { id: 6, name: 'Marcelly', number: 15, position: { x: '16.67%', y: '69.44%' } },  // Posição 5
+      { id: 7, name: 'Luana', number: 4, position: { x: '0%', y: '0%' }, isReserve: true },  // Reserva
+      { id: 8, name: 'Raissa', number: 7, position: { x: '0%', y: '0%' }, isReserve: true }   // Reserva
     ]
   }
 
@@ -36,16 +50,16 @@ function App() {
     return []
   }
 
-  const [players, setPlayers] = useState(loadPlayersFromStorage)
+  const [players, setPlayers] = useState(() => {
+    const loadedPlayers = loadPlayersFromStorage()
+    console.log('Jogadores carregados:', loadedPlayers)
+    return loadedPlayers
+  })
   
   const [savedRotations, setSavedRotations] = useState(loadRotationsFromStorage)
   const [draggedPlayer, setDraggedPlayer] = useState(null)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
-  const [editingPlayer, setEditingPlayer] = useState(null)
-  const [editingNumber, setEditingNumber] = useState(null)
   const [editingRotation, setEditingRotation] = useState(null)
-  const [tempName, setTempName] = useState('')
-  const [tempNumber, setTempNumber] = useState('')
   const [tempRotationName, setTempRotationName] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [modalImageUrl, setModalImageUrl] = useState('')
@@ -53,6 +67,8 @@ function App() {
   const [touchTimeout, setTouchTimeout] = useState(null)
   const [touchStartTime, setTouchStartTime] = useState(null)
   const [longPressTimeout, setLongPressTimeout] = useState(null)
+  const [showSubstitutionModal, setShowSubstitutionModal] = useState(false)
+  const [selectedReserve, setSelectedReserve] = useState(null)
   const courtRef = useRef(null)
 
   // useEffect para salvar jogadores automaticamente no localStorage
@@ -82,70 +98,49 @@ function App() {
     }
   }, [modalImageUrl])
 
-  const handlePlayerNameChange = (id, newName) => {
-    setPlayers(players.map(player => 
-      player.id === id ? { ...player, name: newName } : player
-    ))
-  }
-
-  const handlePlayerNumberChange = (id, newNumber) => {
-    const num = parseInt(newNumber)
-    if (num >= 1 && num <= 99) {
-      setPlayers(players.map(player => 
-        player.id === id ? { ...player, number: num } : player
-      ))
-    }
-  }
-
-  const startEditingName = (player, e) => {
+  // Funções para controle de substituição
+  const handleReserveClick = (reservePlayer, e) => {
     e.stopPropagation()
-    setEditingPlayer(player.id)
-    setTempName(player.name)
+    setSelectedReserve(reservePlayer)
+    setShowSubstitutionModal(true)
   }
 
-  const finishEditingName = (playerId) => {
-    if (tempName.trim()) {
-      handlePlayerNameChange(playerId, tempName.trim())
-    }
-    setEditingPlayer(null)
-    setTempName('')
+  const performSubstitution = (starterPlayer) => {
+    if (!selectedReserve) return
+    
+    // Encontrar posição livre para o titular que será substituído
+    const reservePosition = findReservePosition()
+    
+    // Atualizar jogadores: reserva assume posição do titular e titular vira reserva
+    setPlayers(players.map(player => {
+      if (player.id === selectedReserve.id) {
+        return { ...player, position: starterPlayer.position, isReserve: false }
+      } else if (player.id === starterPlayer.id) {
+        return { ...player, position: reservePosition, isReserve: true }
+      }
+      return player
+    }))
+    
+    // Fechar modal
+    setShowSubstitutionModal(false)
+    setSelectedReserve(null)
   }
 
-  const handleNameKeyPress = (e, playerId) => {
-    if (e.key === 'Enter') {
-      finishEditingName(playerId)
-    } else if (e.key === 'Escape') {
-      setEditingPlayer(null)
-      setTempName('')
-    }
+  const cancelSubstitution = () => {
+    setShowSubstitutionModal(false)
+    setSelectedReserve(null)
   }
 
-  const startEditingNumber = (player, e) => {
-    e.stopPropagation()
-    setEditingNumber(player.id)
-    setTempNumber(player.number.toString())
-  }
-
-  const finishEditingNumber = (playerId) => {
-    const num = parseInt(tempNumber)
-    if (num >= 1 && num <= 99) {
-      handlePlayerNumberChange(playerId, tempNumber)
-    }
-    setEditingNumber(null)
-    setTempNumber('')
-  }
-
-  const handleNumberKeyPress = (e, playerId) => {
-    if (e.key === 'Enter') {
-      finishEditingNumber(playerId)
-    } else if (e.key === 'Escape') {
-      setEditingNumber(null)
-      setTempNumber('')
-    }
+  const findReservePosition = () => {
+    // Agora os reservas ficam em container separado, não precisam de posições na quadra
+    return { x: '0%', y: '0%' }
   }
 
   const rotatePositions = () => {
     const rotatedPlayers = [...players]
+    
+    // Filtrar apenas jogadores titulares (não reservas) para rotação
+    const activePlayers = rotatedPlayers.filter(player => !player.isReserve)
     
     // Definir as posições exatas das posições indicativas da quadra
     const positions = {
@@ -253,9 +248,8 @@ function App() {
     setDragOffset({ x: 0, y: 0 })
   }
 
-  // Handlers de touch para mobile - versão melhorada
+  // Handlers de touch para mobile
   const handleTouchStart = (e, player) => {
-    // Não prevenir default aqui para permitir outros eventos
     const rect = courtRef.current.getBoundingClientRect()
     const touch = e.touches[0]
     const playerX = (parseFloat(player.position.x) / 100) * rect.width
@@ -264,14 +258,12 @@ function App() {
     const offsetX = touch.clientX - rect.left - playerX
     const offsetY = touch.clientY - rect.top - playerY
     
-    // Armazenar posição inicial para detectar movimento
     setTouchStartTime(Date.now())
     
-    // Definir timeout para iniciar drag após um pequeno atraso
     const dragTimeout = setTimeout(() => {
       setDraggedPlayer(player.id)
       setDragOffset({ x: offsetX, y: offsetY })
-    }, 100) // 100ms de atraso para iniciar drag
+    }, 100)
     
     setTouchTimeout(dragTimeout)
   }
@@ -300,53 +292,15 @@ function App() {
   }
 
   const handleTouchEnd = (e) => {
-    // Limpar timeout de drag se existir
     if (touchTimeout) {
       clearTimeout(touchTimeout)
       setTouchTimeout(null)
     }
     
-    // Se estava arrastando, parar o drag
     if (draggedPlayer) {
       e.preventDefault()
       setDraggedPlayer(null)
       setDragOffset({ x: 0, y: 0 })
-    }
-  }
-
-  // Funções para long press no mobile - versão melhorada
-  const handleLongPressStart = (callback, e) => {
-    // Só parar propagação se for elemento específico para edição
-    e.stopPropagation()
-    
-    setTouchStartTime(Date.now())
-    const timeout = setTimeout(() => {
-      // Cancelar drag se long press for detectado
-      if (touchTimeout) {
-        clearTimeout(touchTimeout)
-        setTouchTimeout(null)
-      }
-      callback()
-    }, 500) // 500ms para long press
-    
-    setLongPressTimeout(timeout)
-  }
-
-  const handleLongPressEnd = (e) => {
-    // Só parar propagação se foi para edição
-    if (longPressTimeout) {
-      e.stopPropagation()
-    }
-    
-    if (longPressTimeout) {
-      clearTimeout(longPressTimeout)
-      setLongPressTimeout(null)
-    }
-    
-    // Se foi um toque rápido (menos de 200ms), não fazer nada especial
-    const touchDuration = Date.now() - (touchStartTime || 0)
-    if (touchDuration < 200) {
-      setTouchStartTime(null)
     }
   }
 
@@ -395,7 +349,7 @@ function App() {
   const viewRotation = (rotation) => {
     // Gerar imagem das 6 rotações baseada na rotação selecionada
     const allRotations = []
-    let currentPlayers = [...rotation.players]
+    let currentPlayers = [...rotation.players.filter(p => !p.isReserve)]
     
     // Adicionar rotação atual como primeira
     allRotations.push({
@@ -540,7 +494,7 @@ function App() {
   const generateRotationsImage = () => {
     // Criar todas as 6 rotações a partir da formação atual
     const allRotations = []
-    let currentPlayers = [...players]
+    let currentPlayers = [...players.filter(p => !p.isReserve)]
     
     // Adicionar rotação atual como primeira
     allRotations.push({
@@ -804,72 +758,74 @@ function App() {
             {/* Rede */}
             <div className="net"></div>
             
-            {/* Jogadores */}
-            {players.map(player => (
+            {/* Jogadores Titulares */}
+            {players.filter(player => !player.isReserve).map(player => (
               <div
                 key={player.id}
-                className={`player ${draggedPlayer === player.id ? 'dragging' : ''} ${(editingPlayer === player.id || editingNumber === player.id) ? 'editing' : ''}`}
+                className={`player ${draggedPlayer === player.id ? 'dragging' : ''}`}
                 style={{
                   left: player.position.x,
                   top: player.position.y
                 }}
-                onMouseDown={(e) => (editingPlayer !== player.id && editingNumber !== player.id) && handleMouseDown(e, player)}
-                onTouchStart={(e) => (editingPlayer !== player.id && editingNumber !== player.id) && handleTouchStart(e, player)}
+                onMouseDown={(e) => handleMouseDown(e, player)}
+                onTouchStart={(e) => handleTouchStart(e, player)}
               >
-                {editingNumber === player.id ? (
-                  <input
-                    type="number"
-                    min="1"
-                    max="99"
-                    value={tempNumber}
-                    onChange={(e) => setTempNumber(e.target.value)}
-                    onBlur={() => finishEditingNumber(player.id)}
-                    onKeyDown={(e) => handleNumberKeyPress(e, player.id)}
-                    className="player-number-input"
-                    autoFocus
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                ) : (
-                  <div 
-                    className="player-number" 
-                    onDoubleClick={(e) => startEditingNumber(player, e)}
-                    onTouchStart={(e) => handleLongPressStart(() => startEditingNumber(player, e), e)}
-                    onTouchEnd={handleLongPressEnd}
-                    onTouchCancel={handleLongPressEnd}
-                    title="Clique duplo ou pressione e segure para editar número"
-                  >
-                    {player.number}
-                  </div>
-                )}
-                {editingPlayer === player.id ? (
-                  <input
-                    type="text"
-                    value={tempName}
-                    onChange={(e) => setTempName(e.target.value)}
-                    onBlur={() => finishEditingName(player.id)}
-                    onKeyDown={(e) => handleNameKeyPress(e, player.id)}
-                    className="player-name-input"
-                    autoFocus
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                ) : (
-                  <div 
-                    className="player-name" 
-                    onDoubleClick={(e) => startEditingName(player, e)}
-                    onTouchStart={(e) => handleLongPressStart(() => startEditingName(player, e), e)}
-                    onTouchEnd={handleLongPressEnd}
-                    onTouchCancel={handleLongPressEnd}
-                    title="Clique duplo ou pressione e segure para editar nome"
-                  >
-                    {player.name}
-                  </div>
-                )}
+                <div className="player-number">
+                  {player.number}
+                </div>
+                <div className="player-name">
+                  {player.name}
+                </div>
               </div>
             ))}
           </div>
           
-
+          {/* Container dos Jogadores Reservas */}
+          <div className="reserves-container">
+            <h3 className="reserves-title">Jogadores Reservas</h3>
+            <div className="reserves-list">
+              {players.filter(player => player.isReserve).map(player => (
+                <div
+                  key={player.id}
+                  className="player reserve"
+                  onClick={(e) => handleReserveClick(player, e)}
+                >
+                  <div className="player-number">
+                    {player.number}
+                  </div>
+                  <div className="player-name">
+                    {player.name}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
           
+          {/* Botão para adicionar reservas se não existirem */}
+          {!players.some(p => p.isReserve) && (
+            <button 
+              className="add-reserves-btn"
+              onClick={() => {
+                const newPlayers = [...players,
+                  { id: 7, name: 'Luana', number: 4, position: { x: '0%', y: '0%' }, isReserve: true },
+                  { id: 8, name: 'Raissa', number: 7, position: { x: '0%', y: '0%' }, isReserve: true }
+                ]
+                setPlayers(newPlayers)
+              }}
+              style={{
+                backgroundColor: '#4CAF50',
+                color: 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                margin: '10px'
+              }}
+            >
+              ➕ Adicionar Jogadores Reservas
+            </button>
+          )}
+
           <div className="controls">
             <button className="rotate-btn" onClick={rotatePositions}>
               <span className="material-icons">rotate_right</span>
@@ -973,6 +929,46 @@ function App() {
                 <span className="material-icons">download</span>
                 Baixar Imagem
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para substituição de jogadores */}
+      {showSubstitutionModal && selectedReserve && (
+        <div className="modal-overlay" onClick={cancelSubstitution}>
+          <div className="modal-content substitution-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Substituir Jogador</h3>
+              <button className="modal-close" onClick={cancelSubstitution}>
+                <span className="material-icons">close</span>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="substitution-info">
+                <div className="reserve-player">
+                  <h4>Reserva entrando:</h4>
+                  <div className="player-card">
+                    <span className="player-number">{selectedReserve.number}</span>
+                    <span className="player-name">{selectedReserve.name}</span>
+                  </div>
+                </div>
+                <div className="starter-selection">
+                  <h4>Escolha o titular para substituir:</h4>
+                  <div className="starters-grid">
+                    {players.filter(p => !p.isReserve).map(starter => (
+                      <button
+                        key={starter.id}
+                        className="starter-option"
+                        onClick={() => performSubstitution(starter)}
+                      >
+                        <span className="player-number">{starter.number}</span>
+                        <span className="player-name">{starter.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

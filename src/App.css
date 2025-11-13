@@ -82,6 +82,13 @@
 
 .court-section {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 20px 60px;
+  gap: 40px;
+  position: relative;
 }
 
 .volleyball-court {
@@ -95,7 +102,7 @@
   margin: 0 auto;
   cursor: default;
   box-shadow: 0 10px 30px rgba(44, 90, 160, 0.4);
-  overflow: hidden;
+  overflow: visible;
   touch-action: none;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
@@ -417,6 +424,221 @@
   border-color: #ffeb3b;
   box-shadow: 0 0 10px rgba(255, 235, 59, 0.5);
   transform: translate(-50%, -50%) scale(1.05);
+}
+
+/* Jogadores Reservas */
+.player.reserve {
+  background: linear-gradient(145deg, #1c4c92, #1a4480);
+  border: 2px solid #fff;
+  opacity: 0.9;
+  cursor: pointer;
+  position: relative;
+}
+
+.player.reserve::after {
+  content: '🔄';
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ffeb3b;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.player.reserve:hover {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.05);
+}
+
+.player.reserve .player-name,
+.player.reserve .player-number {
+  color: #fff;
+}
+
+/* Container dos Reservas */
+.reserves-container {
+  margin: 20px 0;
+  padding: 20px;
+  background: linear-gradient(145deg, #f5f5f5, #e8e8e8);
+  border-radius: 12px;
+  border: 2px solid #ddd;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.reserves-title {
+  margin: 0 0 15px 0;
+  text-align: center;
+  color: #031020;
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+
+.reserves-list {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.reserves-list .player.reserve {
+  position: static;
+  transform: none;
+  cursor: pointer;
+  margin: 0;
+  width: 100px;
+  height: 100px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.reserves-list .player.reserve:hover {
+  transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+  .reserves-container {
+    margin: 15px 0;
+    padding: 15px;
+  }
+  
+  .reserves-title {
+    font-size: 1.1rem;
+  }
+  
+  .reserves-list {
+    gap: 15px;
+  }
+  
+  .reserves-list .player.reserve {
+    width: 90px;
+    height: 90px;
+  }
+}
+
+@media (max-width: 480px) {
+  .reserves-list {
+    gap: 10px;
+  }
+  
+  .reserves-list .player.reserve {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .reserves-title {
+    font-size: 1rem;
+  }
+}
+
+/* Modal de Substituição */
+.substitution-modal {
+  max-width: 500px;
+  width: 90%;
+}
+
+.substitution-info {
+  text-align: center;
+}
+
+.reserve-player {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: linear-gradient(145deg, #e3f2fd, #bbdefb);
+  border-radius: 10px;
+  border: 2px solid #2196f3;
+}
+
+.reserve-player h4 {
+  margin: 0 0 15px 0;
+  color: #1976d2;
+  font-size: 16px;
+}
+
+.player-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px;
+  background: linear-gradient(145deg, #1c4c92, #1a4480);
+  color: white;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+.starter-selection h4 {
+  margin: 0 0 20px 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.starters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.starter-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 15px;
+  background: linear-gradient(145deg, #f5f5f5, #e0e0e0);
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: bold;
+}
+
+.starter-option:hover {
+  background: linear-gradient(145deg, #1c4c92, #1a4480);
+  color: white;
+  border-color: #1976d2;
+  transform: scale(1.05);
+}
+
+.starter-option .player-number {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.starter-option .player-name {
+  font-size: 12px;
+}
+
+@media (max-width: 480px) {
+  .substitution-modal {
+    max-width: 95%;
+  }
+  
+  .starters-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  
+  .starter-option {
+    padding: 10px;
+  }
+  
+  .starter-option .player-number {
+    font-size: 16px;
+  }
+  
+  .starter-option .player-name {
+    font-size: 10px;
+  }
 }
 
 .controls {
