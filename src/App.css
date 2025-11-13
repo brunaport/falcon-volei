@@ -274,11 +274,11 @@
 
 .player {
   position: absolute;
-  width: 50px;
-  height: 60px;
+  width: 120px;
+  height: 65px;
   background: linear-gradient(145deg, #1c4c92, #1a4480);
   border: 2px solid #fff;
-  border-radius: 30px 30px 15px 15px;
+  border-radius: 10px;
   cursor: grab;
   display: flex;
   flex-direction: column;
@@ -291,22 +291,30 @@
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
-  touch-action: none;
+  touch-action: manipulation;
   z-index: 10;
   box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }
 
+/* Telas muito grandes */
+@media (min-width: 1400px) {
+  .player {
+    width: 140px;
+    height: 75px;
+  }
+}
+
 @media (max-width: 768px) {
   .player {
-    width: 45px;
-    height: 55px;
+    width: 105px;
+    height: 58px;
     cursor: pointer;
   }
 }
 
 @media (max-width: 480px) {
   .player {
-    width: 40px;
+    width: 90px;
     height: 50px;
   }
 }
@@ -326,12 +334,12 @@
 }
 
 .player-number {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: bold;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
   cursor: pointer;
-  padding: 2px;
-  border-radius: 4px;
+  padding: 3px 5px;
+  border-radius: 5px;
   transition: background-color 0.2s;
 }
 
@@ -340,13 +348,17 @@
 }
 
 .player-name {
-  font-size: 12px;
+  font-size: 16px;
   text-align: center;
-  line-height: 1;
+  line-height: 1.1;
   cursor: pointer;
-  padding: 2px;
-  border-radius: 6px;
+  padding: 2px 5px;
+  border-radius: 5px;
   transition: background-color 0.2s;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (max-width: 768px) {
@@ -355,7 +367,7 @@
   }
   
   .player-name {
-    font-size: 10px;
+    font-size: 12px;
   }
 }
 
@@ -365,7 +377,7 @@
   }
   
   .player-name {
-    font-size: 9px;
+    font-size: 11px;
   }
 }
 
@@ -402,6 +414,9 @@
 .player.editing {
   z-index: 200;
   cursor: default;
+  border-color: #ffeb3b;
+  box-shadow: 0 0 10px rgba(255, 235, 59, 0.5);
+  transform: translate(-50%, -50%) scale(1.05);
 }
 
 .controls {
@@ -675,17 +690,12 @@
     min-width: 120px;
   }
   
-  .player {
-    width: 35px;
-    height: 45px;
-  }
-  
   .player-number {
     font-size: 12px;
   }
   
   .player-name {
-    font-size: 9px;
+    font-size: 12px;
   }
   
   .player-name-input {
@@ -696,7 +706,7 @@
   .player-number-input {
     width: 25px;
     height: 25px;
-    font-size: 11px;
+    font-size: 12px;
   }
 }
 
@@ -902,6 +912,18 @@
   
   .player:hover {
     transform: translate(-50%, -50%) scale(1.05);
+  }
+  
+  .player-number,
+  .player-name {
+    position: relative;
+  }
+  
+  .player-number:active,
+  .player-name:active {
+    background-color: rgba(255, 255, 255, 0.4);
+    transform: scale(0.95);
+    transition: all 0.1s ease;
   }
   
   .player-number:hover,

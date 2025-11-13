@@ -50,6 +50,9 @@ function App() {
   const [showModal, setShowModal] = useState(false)
   const [modalImageUrl, setModalImageUrl] = useState('')
   const [selectedRotationName, setSelectedRotationName] = useState('')
+  const [touchTimeout, setTouchTimeout] = useState(null)
+  const [touchStartTime, setTouchStartTime] = useState(null)
+  const [longPressTimeout, setLongPressTimeout] = useState(null)
   const courtRef = useRef(null)
 
   // useEffect para salvar jogadores automaticamente no localStorage
@@ -250,9 +253,9 @@ function App() {
     setDragOffset({ x: 0, y: 0 })
   }
 
-  // Handlers de touch para mobile
+  // Handlers de touch para mobile - versão melhorada
   const handleTouchStart = (e, player) => {
-    e.preventDefault()
+    // Não prevenir default aqui para permitir outros eventos
     const rect = courtRef.current.getBoundingClientRect()
     const touch = e.touches[0]
     const playerX = (parseFloat(player.position.x) / 100) * rect.width
@@ -261,13 +264,21 @@ function App() {
     const offsetX = touch.clientX - rect.left - playerX
     const offsetY = touch.clientY - rect.top - playerY
     
-    setDraggedPlayer(player.id)
-    setDragOffset({ x: offsetX, y: offsetY })
+    // Armazenar posição inicial para detectar movimento
+    setTouchStartTime(Date.now())
+    
+    // Definir timeout para iniciar drag após um pequeno atraso
+    const dragTimeout = setTimeout(() => {
+      setDraggedPlayer(player.id)
+      setDragOffset({ x: offsetX, y: offsetY })
+    }, 100) // 100ms de atraso para iniciar drag
+    
+    setTouchTimeout(dragTimeout)
   }
 
   const handleTouchMove = (e) => {
     if (draggedPlayer) {
-      e.preventDefault()
+      e.preventDefault() // Só previne default quando já está arrastando
       const rect = courtRef.current.getBoundingClientRect()
       const courtWidth = rect.width
       const courtHeight = rect.height
@@ -289,9 +300,54 @@ function App() {
   }
 
   const handleTouchEnd = (e) => {
-    e.preventDefault()
-    setDraggedPlayer(null)
-    setDragOffset({ x: 0, y: 0 })
+    // Limpar timeout de drag se existir
+    if (touchTimeout) {
+      clearTimeout(touchTimeout)
+      setTouchTimeout(null)
+    }
+    
+    // Se estava arrastando, parar o drag
+    if (draggedPlayer) {
+      e.preventDefault()
+      setDraggedPlayer(null)
+      setDragOffset({ x: 0, y: 0 })
+    }
+  }
+
+  // Funções para long press no mobile - versão melhorada
+  const handleLongPressStart = (callback, e) => {
+    // Só parar propagação se for elemento específico para edição
+    e.stopPropagation()
+    
+    setTouchStartTime(Date.now())
+    const timeout = setTimeout(() => {
+      // Cancelar drag se long press for detectado
+      if (touchTimeout) {
+        clearTimeout(touchTimeout)
+        setTouchTimeout(null)
+      }
+      callback()
+    }, 500) // 500ms para long press
+    
+    setLongPressTimeout(timeout)
+  }
+
+  const handleLongPressEnd = (e) => {
+    // Só parar propagação se foi para edição
+    if (longPressTimeout) {
+      e.stopPropagation()
+    }
+    
+    if (longPressTimeout) {
+      clearTimeout(longPressTimeout)
+      setLongPressTimeout(null)
+    }
+    
+    // Se foi um toque rápido (menos de 200ms), não fazer nada especial
+    const touchDuration = Date.now() - (touchStartTime || 0)
+    if (touchDuration < 200) {
+      setTouchStartTime(null)
+    }
   }
 
   const saveRotation = () => {
@@ -494,17 +550,73 @@ function App() {
     
     // Gerar as outras 5 rotações
     for (let i = 1; i < 6; i++) {
-      // Aplicar uma rotação no sentido horário
+      // Aplicar uma rotação no sentido horário usando o mesmo sistema das outras funções
       const rotatedPlayers = [...currentPlayers]
-      const tempPosition = rotatedPlayers[3].position // Posição 1 (saída)
       
-      // Cada jogador vai para a próxima posição no sentido horário: 1->2->3->4->5->6->1
-      rotatedPlayers[3].position = rotatedPlayers[4].position  // 1 <- 6
-      rotatedPlayers[4].position = rotatedPlayers[5].position  // 6 <- 5
-      rotatedPlayers[5].position = rotatedPlayers[2].position  // 5 <- 4
-      rotatedPlayers[2].position = rotatedPlayers[1].position  // 4 <- 3
-      rotatedPlayers[1].position = rotatedPlayers[0].position  // 3 <- 2
-      rotatedPlayers[0].position = tempPosition                // 2 <- 1
+      // Definir as posições exatas das posições indicativas da quadra
+      const positions = {
+        1: { x: 83.33, y: 69.44 },  // Posição 1 (direita fundo)
+        2: { x: 83.33, y: 19.44 },  // Posição 2 (direita frente)  
+        3: { x: 50, y: 19.44 },     // Posição 3 (meio frente)
+        4: { x: 16.67, y: 19.44 },  // Posição 4 (esquerda frente)
+        5: { x: 16.67, y: 69.44 },  // Posição 5 (esquerda fundo)
+        6: { x: 50, y: 69.44 }      // Posição 6 (meio fundo)
+      }
+      
+      // Função para calcular distância entre dois pontos
+      const calculateDistance = (pos1, pos2) => {
+        const dx = pos1.x - pos2.x
+        const dy = pos1.y - pos2.y
+        return Math.sqrt(dx * dx + dy * dy)
+      }
+      
+      // Encontrar a posição mais próxima de cada jogador
+      const playersByPosition = {}
+      
+      rotatedPlayers.forEach((player, playerIndex) => {
+        const playerPos = {
+          x: parseFloat(player.position.x),
+          y: parseFloat(player.position.y)
+        }
+        
+        let closestPosition = null
+        let minDistance = Infinity
+        
+        // Encontrar a posição mais próxima
+        Object.keys(positions).forEach(posNum => {
+          const distance = calculateDistance(playerPos, positions[posNum])
+          if (distance < minDistance) {
+            minDistance = distance
+            closestPosition = posNum
+          }
+        })
+        
+        // Verificar se a posição já está ocupada por outro jogador mais próximo
+        if (!playersByPosition[closestPosition] || 
+            calculateDistance(playerPos, positions[closestPosition]) < 
+            calculateDistance(
+              {
+                x: parseFloat(rotatedPlayers[playersByPosition[closestPosition]].position.x),
+                y: parseFloat(rotatedPlayers[playersByPosition[closestPosition]].position.y)
+              }, 
+              positions[closestPosition]
+            )) {
+          playersByPosition[closestPosition] = playerIndex
+        }
+      })
+      
+      // Sistema 6x0 - Rotação no sentido horário: 1→6→5→4→3→2→1
+      const rotationMap = { 1: 6, 6: 5, 5: 4, 4: 3, 3: 2, 2: 1 }
+      
+      // Aplicar rotação: cada jogador vai para a próxima posição no sentido horário
+      Object.keys(playersByPosition).forEach(currentPos => {
+        const playerIndex = playersByPosition[currentPos]
+        const nextPos = rotationMap[parseInt(currentPos)]
+        rotatedPlayers[playerIndex].position = { 
+          x: `${positions[nextPos].x}%`, 
+          y: `${positions[nextPos].y}%` 
+        }
+      })
       
       currentPlayers = rotatedPlayers
       allRotations.push({
@@ -624,7 +736,7 @@ function App() {
     ctx.fillText(number, x, y - 3)
     
     // Nome do jogador
-    ctx.font = 'bold 9px Arial'
+    ctx.font = 'bold 12px Arial'
     ctx.textBaseline = 'top'
     ctx.fillStyle = '#333'
     
@@ -632,7 +744,7 @@ function App() {
     const maxWidth = 40
     const words = name.split(' ')
     let line = ''
-    let lineHeight = 10
+    let lineHeight = 12
     let currentY = y + 20
     
     for (let i = 0; i < words.length; i++) {
@@ -721,7 +833,10 @@ function App() {
                   <div 
                     className="player-number" 
                     onDoubleClick={(e) => startEditingNumber(player, e)}
-                    title="Clique duplo para editar número"
+                    onTouchStart={(e) => handleLongPressStart(() => startEditingNumber(player, e), e)}
+                    onTouchEnd={handleLongPressEnd}
+                    onTouchCancel={handleLongPressEnd}
+                    title="Clique duplo ou pressione e segure para editar número"
                   >
                     {player.number}
                   </div>
@@ -741,7 +856,10 @@ function App() {
                   <div 
                     className="player-name" 
                     onDoubleClick={(e) => startEditingName(player, e)}
-                    title="Clique duplo para editar nome"
+                    onTouchStart={(e) => handleLongPressStart(() => startEditingName(player, e), e)}
+                    onTouchEnd={handleLongPressEnd}
+                    onTouchCancel={handleLongPressEnd}
+                    title="Clique duplo ou pressione e segure para editar nome"
                   >
                     {player.name}
                   </div>
