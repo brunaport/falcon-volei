@@ -250,6 +250,50 @@ function App() {
     setDragOffset({ x: 0, y: 0 })
   }
 
+  // Handlers de touch para mobile
+  const handleTouchStart = (e, player) => {
+    e.preventDefault()
+    const rect = courtRef.current.getBoundingClientRect()
+    const touch = e.touches[0]
+    const playerX = (parseFloat(player.position.x) / 100) * rect.width
+    const playerY = (parseFloat(player.position.y) / 100) * rect.height
+    
+    const offsetX = touch.clientX - rect.left - playerX
+    const offsetY = touch.clientY - rect.top - playerY
+    
+    setDraggedPlayer(player.id)
+    setDragOffset({ x: offsetX, y: offsetY })
+  }
+
+  const handleTouchMove = (e) => {
+    if (draggedPlayer) {
+      e.preventDefault()
+      const rect = courtRef.current.getBoundingClientRect()
+      const courtWidth = rect.width
+      const courtHeight = rect.height
+      
+      const touch = e.touches[0]
+      const newX = touch.clientX - rect.left - dragOffset.x
+      const newY = touch.clientY - rect.top - dragOffset.y
+      
+      // Converter para percentuais e limitar movimento
+      const percentX = Math.max(5, Math.min((newX / courtWidth) * 100, 95))
+      const percentY = Math.max(5, Math.min((newY / courtHeight) * 100, 95))
+      
+      setPlayers(players.map(player => 
+        player.id === draggedPlayer 
+          ? { ...player, position: { x: `${percentX}%`, y: `${percentY}%` } }
+          : player
+      ))
+    }
+  }
+
+  const handleTouchEnd = (e) => {
+    e.preventDefault()
+    setDraggedPlayer(null)
+    setDragOffset({ x: 0, y: 0 })
+  }
+
   const saveRotation = () => {
     const currentRotation = {
       id: Date.now(),
@@ -611,7 +655,7 @@ function App() {
     <div className="app">
       <header className="header">
         <img src={falconLogo} alt="Falcon Logo" className="team-logo" />
-        <h1>Quadro Tático - Time Falcon</h1>
+        <h1>Quadro Tático - Falcon</h1>
       </header>
       
       <div className="main-content">
@@ -622,6 +666,8 @@ function App() {
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
           >
             {/* Linhas da quadra */}
             <div className="court-lines">
@@ -656,6 +702,7 @@ function App() {
                   top: player.position.y
                 }}
                 onMouseDown={(e) => (editingPlayer !== player.id && editingNumber !== player.id) && handleMouseDown(e, player)}
+                onTouchStart={(e) => (editingPlayer !== player.id && editingNumber !== player.id) && handleTouchStart(e, player)}
               >
                 {editingNumber === player.id ? (
                   <input

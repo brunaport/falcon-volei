@@ -1,17 +1,16 @@
 {
-  "homepage": "https://github.com/brunaport/falcon-volei",
+  "homepage": "https://brunaport.github.io/falcon-volei",
   "name": "falcon-volei",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-  "predeploy": "npm run build",
-  "deploy": "gh-pages -d build",
-  "start": "react-scripts start",
-  "build": "react-scripts build",
-  "test": "react-scripts test",
-  "eject": "react-scripts eject"
- },
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
   "dependencies": {
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
